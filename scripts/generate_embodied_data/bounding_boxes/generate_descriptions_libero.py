@@ -20,7 +20,7 @@ parser.add_argument("--data-path", default="/home/work/AGI_NIH/data/embodied_fea
 args = parser.parse_args()
 
 device = f"cuda:{args.gpu}"
-hf_token = "***REMOVED***"  # TODO: 실제 토큰 입력
+hf_token = ""  # TODO: 실제 토큰 입력
 vlm_model_id = "prism-dinosiglip+7b"
 
 warnings.filterwarnings("ignore")
