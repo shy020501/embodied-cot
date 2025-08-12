@@ -1,0 +1,189 @@
+"""Utils for evaluating policies in real-world BridgeData V2 environments."""
+
+import os
+import sys
+import time
+from functools import partial
+from pathlib import Path
+
+import imageio
+import numpy as np
+import torch
+from widowx_envs.widowx_env_service import WidowXClient, WidowXConfigs
+
+sys.path.append("../..")  # hack so that the interpreter can find experiments.robot
+from experiments.robot.bridge.widowx_env import WidowXGym
+
+# Initialize important constants and pretty-printing mode in NumPy.
+ACTION_DIM = 7
+BRIDGE_PROPRIO_DIM = 7
+DATE_TIME = time.strftime("%Y_%m_%d-%H_%M_%S")
+DEVICE = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+np.set_printoptions(formatter={"float": lambda x: "{0:0.2f}".format(x)})
+
+
+def get_widowx_env_params(cfg):
+    """Gets (mostly default) environment parameters for the WidowX environment."""
+    env_params = WidowXConfigs.DefaultEnvParams.copy()
+    env_params["override_workspace_boundaries"] = cfg.bounds
+    env_params["camera_topics"] = cfg.camera_topics
+    env_params["return_full_image"] = True
+    return env_params
+
+
+def get_widowx_env(cfg, model=None):
+    """Get WidowX control environment."""
+    # Set up the WidowX environment parameters.
+    env_params = get_widowx_env_params(cfg)
+    start_state = np.concatenate([cfg.init_ee_pos, cfg.init_ee_quat])
+    env_params["start_state"] = list(start_state)
+    # Set up the WidowX client.
+    widowx_client = WidowXClient(host=cfg.host_ip, port=cfg.port)
+    widowx_client.init(env_params)
+    env = WidowXGym(
+        widowx_client,
+        cfg=cfg,
+        blocking=cfg.blocking,
+    )
+    # (For Octo only) Wrap the robot environment.
+    if cfg.model_family == "octo":
+        from octo.utils.gym_wrappers import (
+            HistoryWrapper,
+            TemporalEnsembleWrapper,
+            UnnormalizeActionProprio,
+        )
+
+        env = UnnormalizeActionProprio(env, model.dataset_statistics["bridge_dataset"], normalization_type="normal")
+        env = HistoryWrapper(env, horizon=1)
+        env = TemporalEnsembleWrapper(env, pred_horizon=1)
+    return env
+
+
+def get_next_task_label(task_label):
+    """Prompt the user to input the next task."""
+    if task_label == "":
+        user_input = ""
+        while user_input == "":
+            user_input = input("Enter the task name: ")
+        task_label = user_input
+    else:
+        user_input = input("Enter the task name (or leave blank to repeat the previous task): ")
+        if user_input == "":
+            pass  # do nothing, let task_label be the same
+        else:
+            task_label = user_input
+    print(f"Task: {task_label}")
+    return task_label
+
+
+def save_rollout_gif(rollout_images, idx):
+    """Saves a GIF of an episode."""
+    os.makedirs("./rollouts", exist_ok=True)
+    gif_path = f"./rollouts/rollout-{DATE_TIME}-{idx}.gif"
+    imageio.mimsave(gif_path, rollout_images, loop=0)
+    print(f"Saved rollout GIF at path {gif_path}")
+    # Save as mp4
+    # mp4_path = f"./rollouts/rollout-{DATE_TIME}-{idx}.mp4"
+    # imageio.mimwrite(mp4_path, rollout_images, fps=5)
+    # print(f"Saved rollout MP4 at path {mp4_path}")
+
+def save_rollout_video(rollout_images, idx):
+    """Saves an MP4 replay of an episode."""
+    os.makedirs("./rollouts", exist_ok=True)
+    mp4_path = f"./rollouts/rollout-{DATE_TIME}-{idx+1}.mp4"
+    video_writer = imageio.get_writer(mp4_path, fps=5)
+    for img in rollout_images:
+        video_writer.append_data(img)
+    video_writer.close()
+    print(f"Saved rollout MP4 at path {mp4_path}")
+
+
+def save_rollout_data(rollout_orig_images, rollout_images, rollout_states, rollout_actions, idx):
+    """
+    Saves rollout data from an episode.
+
+    Args:
+        rollout_orig_images (list): Original rollout images (before preprocessing).
+        rollout_images (list): Preprocessed images.
+        rollout_states (list): Proprioceptive states.
+        rollout_actions (list): Predicted actions.
+        idx (int): Episode index.
+    """
+    os.makedirs("./rollouts", exist_ok=True)
+    path = f"./rollouts/rollout-{DATE_TIME}-{idx+1}.npz"
+    # Convert lists to numpy arrays
+    orig_images_array = np.array(rollout_orig_images)
+    images_array = np.array(rollout_images)
+    states_array = np.array(rollout_states)
+    actions_array = np.array(rollout_actions)
+    # Save to a single .npz file
+    np.savez(path, orig_images=orig_images_array, images=images_array, states=states_array, actions=actions_array)
+    print(f"Saved rollout data at path {path}")
+
+
+def resize_image(img, resize_size):
+    """Takes numpy array corresponding to a single image and returns resized image as numpy array."""
+    assert isinstance(resize_size, tuple)
+    img = Image.fromarray(img)
+    BRIDGE_ORIG_IMG_SIZE = (256, 256)
+    img = img.resize(BRIDGE_ORIG_IMG_SIZE, Image.Resampling.LANCZOS)
+    img = img.resize(resize_size, Image.Resampling.LANCZOS)  # also resize to size seen at train time
+    img = img.convert("RGB")
+    img = np.array(img)
+    return img
+
+
+def get_preprocessed_image(obs, resize_size):
+    """
+    Extracts image from observations and preprocesses it.
+
+    Preprocess the image the exact same way that the Berkeley Bridge folks did it
+    to minimize distribution shift.
+    NOTE (Moo Jin): Yes, we resize down to 256x256 first even though the image may end up being
+                    resized up to a different resolution by some models. This is just so that we're in-distribution
+                    w.r.t. the original preprocessing at train time.
+    """
+    assert isinstance(resize_size, int) or isinstance(resize_size, tuple)
+    if isinstance(resize_size, int):
+        resize_size = (resize_size, resize_size)
+    if len(obs["full_image"].shape) == 4:  # history included
+        num_images_in_history = obs["full_image"].shape[0]
+        assert resize_size[0] >= resize_size[1]  # in PIL format: (W, H) where W >= H
+        W, H = resize_size
+        new_images = np.zeros((num_images_in_history, H, W, obs["full_image"].shape[-1]), dtype=np.uint8)
+        for i in range(num_images_in_history):
+            new_images[i] = resize_image(obs["full_image"][i], resize_size)
+        obs["full_image"] = new_images
+    else:  # no history
+        obs["full_image"] = resize_image(obs["full_image"], resize_size)
+    return obs["full_image"]
+
+def refresh_obs(obs, env):
+    """Fetches new observations from the environment and updates the current observations."""
+    new_obs = env.get_observation()
+    history_included = len(obs["full_image"].shape) == 4
+    if history_included:
+        obs["full_image"][-1] = new_obs["full_image"]
+        obs["image_primary"][-1] = new_obs["image_primary"]
+        obs["proprio"][-1] = new_obs["proprio"]
+    else:
+        obs["full_image"] = new_obs["full_image"]
+        obs["image_primary"] = new_obs["image_primary"]
+        obs["proprio"] = new_obs["proprio"]
+    return obs
+
+def get_next_task_label(task_label):
+    """Prompt the user to input the next task."""
+    if task_label == "":
+        user_input = ""
+        while user_input == "":
+            user_input = input("Enter the task name: ")
+        task_label = user_input
+    else:
+        user_input = input("Enter the task name (or leave blank to repeat the previous task): ")
+        if user_input == "":
+            pass  # do nothing, let task_label be the same
+        else:
+            task_label = user_input
+    print(f"Task: {task_label}")
+    return task_label

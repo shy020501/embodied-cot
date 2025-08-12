@@ -1,0 +1,74 @@
+{
+  "os": "Linux-5.15.0-130-generic-x86_64-with-glibc2.17",
+  "python": "CPython 3.8.20",
+  "startedAt": "2025-08-08T06:06:56.289027Z",
+  "args": [
+    "--vla_path",
+    "Embodied-CoT/ecot-openvla-7b-oxe",
+    "--data_root_dir",
+    "/home/work/AGI_NIH/data/embodied_features_and_demos_libero",
+    "--dataset_name",
+    "libero_90",
+    "--run_root_dir",
+    "/home/work/AGI_NIH/checkpoints/ecot_libero_finetune",
+    "--adapter_tmp_dir",
+    "/home/work/AGI_NIH/checkpoints/ecot_libero_finetune/lora",
+    "--lora_rank",
+    "32",
+    "--batch_size",
+    "16",
+    "--grad_accumulation_steps",
+    "1",
+    "--learning_rate",
+    "2e-5",
+    "--image_aug",
+    "False",
+    "--wandb_project",
+    "ecot",
+    "--wandb_entity",
+    "AGI_CSI"
+  ],
+  "program": "vla-scripts/finetune.py",
+  "codePath": "vla-scripts/finetune.py",
+  "git": {
+    "remote": "https://github.com/MichalZawalski/embodied-CoT.git",
+    "commit": "1813ad76001f1e08095088f94a86c43fc0e457a3"
+  },
+  "email": "gnih1226@gmail.com",
+  "root": "/home/work/AGI_NIH/embodied-CoT",
+  "host": "main1",
+  "executable": "/home/work/AGI_NIH/anaconda3/envs/openvla8/bin/python",
+  "codePathLocal": "vla-scripts/finetune.py",
+  "cpu_count": 56,
+  "cpu_count_logical": 48,
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "gpu_count": 2,
+  "disk": {
+    "/": {
+      "total": "935062740992",
+      "used": "619232845824"
+    }
+  },
+  "memory": {
+    "total": "513248591872"
+  },
+  "cpu": {
+    "count": 56,
+    "countLogical": 48
+  },
+  "gpu_nvidia": [
+    {
+      "name": "NVIDIA H100 80GB HBM3",
+      "memoryTotal": "85520809984",
+      "cudaCores": 16896,
+      "architecture": "Hopper"
+    },
+    {
+      "name": "NVIDIA H100 80GB HBM3",
+      "memoryTotal": "85520809984",
+      "cudaCores": 16896,
+      "architecture": "Hopper"
+    }
+  ],
+  "cudaVersion": "12.8"
+}
