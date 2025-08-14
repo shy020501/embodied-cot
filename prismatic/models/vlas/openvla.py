@@ -35,7 +35,7 @@ class OpenVLA(PrismaticVLM):
         self.use_interactive = False
 
         #self.base_prompt = f"{CotTag.TASK.value}"
-        self.base_prompt = f"{CotTag.SUBTASK.value}"
+        self.base_prompt = f"{CotTag.PLAN.value}"
 
         self.max_freezing_time = 5
         self.time_frozen = 0
