@@ -143,13 +143,15 @@ class Exp_Qwen25_DinoSigLIP_224px_0_5B_OXE_Magic_Soup(Exp_SigLIP_224px_Bridge):
 
 @dataclass
 class Exp_Qwen25_DinoSigLIP_224px_0_5B_LIBERO_90(Exp_Qwen25_DinoSigLIP_224px_0_5B_OXE_Magic_Soup):
-    vla_id: str = "prism-qwen25-dinosiglip-224px+0_5b+mx-libero-90"
+    # vla_id: str = "prism-qwen25-dinosiglip-224px+0_5b+mx-libero-90"
+    vla_id: str = "prism-qwen25-extra-dinosiglip-224px-0_5b+mx-libero-90"
 
     data_mix: str = "libero_90"
 
-    expected_world_size: int = 1
-    global_batch_size: int = 8
-    per_device_batch_size: int = 8
+    expected_world_size: int = 2
+    global_batch_size: int = 128
+    per_device_batch_size: int = 16
+    max_steps: int = 200000
 
 
 @dataclass

@@ -167,9 +167,16 @@ class HFCausalLLMBackbone(LLMBackbone, ABC):
             #       this works well with base LLM generation.
             #   =>> Like Llama-2 Tokenizers -- we'll add a special PAD token for training purposes.
             "phi-2-3b",
+            "qwen25-0_5b-pure",
+            "qwen25-0_5b-extra",
+            "qwen25-1_5b-pure",
+            "qwen25-3b-pure",
+            "qwen25-7b-pure",
         }
         if self.identifier in SPECIAL_CASES:
             return
+
+        print(self.identifier)
 
         # Note =>> this assert should hold for all Llama-derived tokenizers (`LlamaTokenizerFast` ==> includes Mistral!
         assert (self.tokenizer("Test 123", add_special_tokens=True).input_ids[0] == self.tokenizer.bos_token_id) and (
