@@ -24,6 +24,7 @@ from prismatic.vla.action_tokenizer import ActionTokenizer
 from prismatic.vla.datasets.rlds import make_interleaved_dataset, make_single_dataset
 from prismatic.vla.datasets.rlds.oxe import OXE_NAMED_MIXTURES, get_oxe_dataset_kwargs_and_weights
 from prismatic.vla.datasets.rlds.utils.data_utils import NormalizationType
+from transformers.models.qwen2.tokenization_qwen2_fast import Qwen2TokenizerFast
 
 # HuggingFace Default / LLaMa-2 IGNORE_INDEX (for labels)
 IGNORE_INDEX = -100
@@ -102,10 +103,15 @@ class RLDSBatchTransform:
         input_ids, labels = torch.tensor(input_ids), torch.tensor(labels)
         pixel_values = self.image_transform(img)
 
+        num_end_tokens = 1
+        if isinstance(self.base_tokenizer, Qwen2TokenizerFast):
+            # Qwen has <|im_end|><|endoftext|> for example
+            num_end_tokens = 2
+
         # [CRITICAL] We do not want to take the loss for anything but the predicted action tokens!
         # labels[: -(len(action) + 1)] = IGNORE_INDEX
         if not self.predict_stop_token:
-            labels[-1] = IGNORE_INDEX
+            labels[-num_end_tokens] = IGNORE_INDEX
 
         return dict(pixel_values=pixel_values, input_ids=input_ids, labels=labels, dataset_name=dataset_name)
 

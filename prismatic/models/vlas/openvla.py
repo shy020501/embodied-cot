@@ -7,6 +7,7 @@ import numpy as np
 import torch
 from PIL import Image
 from transformers import LlamaTokenizerFast
+from transformers.models.qwen2.tokenization_qwen2_fast import Qwen2TokenizerFast
 
 from experiments.robot.bridge.reasoning_client import ReasoningClient
 from prismatic.models.vlms.prismatic import PrismaticVLM
@@ -110,6 +111,9 @@ class OpenVLA(PrismaticVLM):
                     ),
                     dim=1,
                 )
+            elif isinstance(tokenizer, Qwen2TokenizerFast):
+                # do nothing here. I think...
+                pass
             else:
                 raise ValueError(f"Unsupported `tokenizer` type = {type(tokenizer)}")
 

@@ -8,11 +8,17 @@ from typing import List, Union
 
 import numpy as np
 from transformers import PreTrainedTokenizerBase
+from transformers.models.qwen2.tokenization_qwen2_fast import Qwen2TokenizerFast
 
 
 class ActionTokenizer:
     def __init__(
-        self, tokenizer: PreTrainedTokenizerBase, bins: int = 256, min_action: int = -1, max_action: int = 1
+        self, 
+        tokenizer: PreTrainedTokenizerBase, 
+        bins: int = 256, 
+        min_action: int = -1, 
+        max_action: int = 1,
+        use_extra: bool = False,
     ) -> None:
         """
         Discretizes continuous robot actions into N bins per dimension and maps to the least used tokens.
@@ -31,9 +37,16 @@ class ActionTokenizer:
         self.bins = np.linspace(min_action, max_action, self.n_bins)
         self.bin_centers = (self.bins[:-1] + self.bins[1:]) / 2.0
 
+        self.tokenizer_len = self.tokenizer.vocab_size
+        if isinstance(tokenizer, Qwen2TokenizerFast) and use_extra:
+            self.tokenizer_len = len(self.tokenizer)
+        elif use_extra:
+            raise NotImplementedError("Cannot use extra tokens for this tokenizer!")
+
         # [Contract] Set "action_token_begin_idx" based on `self.tokenizer.vocab_size - (self.n_bins + 1)`
         #   =>> Assumes we're always overwriting the final `n_bins` tokens of the vocabulary!
         self.action_token_begin_idx: int = int(self.tokenizer.vocab_size - (self.n_bins + 1))
+        self.action_token_end_idx: int = int(self.tokenizer_len)
 
     def __call__(self, action: np.ndarray) -> Union[str, List[str]]:
         """Clip & bin actions to *the last `n_bins` tokens* of the vocabulary (e.g., tokenizer.vocab[-256:])."""

@@ -320,7 +320,7 @@ class TrainingStrategy(ABC):
 
                 token_preds = output.logits[:, self.vlm.vision_backbone.num_patches : -1].argmax(dim=2)
                 token_gt = batch["labels"][:, 1:].to(token_preds.device)
-                action_mask = token_gt > action_tokenizer.action_token_begin_idx
+                action_mask = (action_tokenizer.action_token_end_idx > token_gt) & (token_gt > action_tokenizer.action_token_begin_idx)
 
                 def get_masks(tokens, tags):
                     tag_tokens = dict()
