@@ -18,7 +18,7 @@ class ActionTokenizer:
         bins: int = 256, 
         min_action: int = -1, 
         max_action: int = 1,
-        use_extra: bool = False,
+        use_extra: bool = True,
     ) -> None:
         """
         Discretizes continuous robot actions into N bins per dimension and maps to the least used tokens.
