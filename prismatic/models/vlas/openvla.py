@@ -112,8 +112,13 @@ class OpenVLA(PrismaticVLM):
                     dim=1,
                 )
             elif isinstance(tokenizer, Qwen2TokenizerFast):
-                # do nothing here. I think...
-                pass
+                return torch.cat(
+                    (
+                        input_ids,
+                        tokenizer(prompt_prefix, return_tensors="pt").input_ids.to(self.device),
+                    ),
+                    dim=1,
+                )
             else:
                 raise ValueError(f"Unsupported `tokenizer` type = {type(tokenizer)}")
 
