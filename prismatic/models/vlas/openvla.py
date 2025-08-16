@@ -36,7 +36,7 @@ class OpenVLA(PrismaticVLM):
         self.use_interactive = False
 
         #self.base_prompt = f"{CotTag.TASK.value}"
-        self.base_prompt = f"{CotTag.PLAN.value}"
+        self.base_prompt = f"{CotTag.SUBTASK.value}"
 
         self.max_freezing_time = 5
         self.time_frozen = 0
@@ -208,8 +208,8 @@ class OpenVLA(PrismaticVLM):
                     prompt = decoded_tokens.split("\nOut: ")[-1]
                     prompt = prompt.split(" ASSISTANT: ")[-1]
 
-                    if " MOVE REASONING: " in prompt:
-                        prompt = prompt.split(" MOVE REASONING: ")[0]
+                    if " ACTION: " in prompt:
+                        prompt = prompt.split(" ACTION: ")[0]
                     else:
                         prompt = prompt.split(" GRIPPER POSITION: ")[0]
                     self.frozen_prompt = prompt
