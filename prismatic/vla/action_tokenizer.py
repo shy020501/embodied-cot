@@ -54,10 +54,10 @@ class ActionTokenizer:
         discretized_action = np.digitize(action, self.bins)
 
         # Handle single element vs. batch
-        if len(discretized_action.shape) == 1:
-            return self.tokenizer.decode(list(self.tokenizer.vocab_size - discretized_action))
+        if len(discretized_action.shape) <= 1:
+            return self.tokenizer.decode(list(self.tokenizer_len - discretized_action))
         else:
-            return self.tokenizer.batch_decode((self.tokenizer.vocab_size - discretized_action).tolist())
+            return self.tokenizer.batch_decode((self.tokenizer_len - discretized_action).tolist())
 
     def decode_token_ids_to_actions(self, action_token_ids: np.ndarray) -> np.ndarray:
         """
@@ -75,7 +75,7 @@ class ActionTokenizer:
                     self._bin_centers. Therefore, if i==255, we subtract 1 from it so that it just becomes the index of
                     the last bin center. We implement this simply via clipping between [0, 255 - 1].
         """
-        discretized_actions = self.tokenizer.vocab_size - action_token_ids
+        discretized_actions = self.tokenizer_len - action_token_ids
         discretized_actions = np.clip(discretized_actions - 1, a_min=0, a_max=self.bin_centers.shape[0] - 1)
 
         return self.bin_centers[discretized_actions]
