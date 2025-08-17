@@ -130,6 +130,10 @@ class OpenVLA(PrismaticVLM):
             pixel_values = {k: v[None, ...].to(self.device) for k, v in pixel_values.items()}
         else:
             raise ValueError(f"Unsupported `pixel_values` type = {type(pixel_values)}")
+        
+        num_end_tokens = 1
+        if isinstance(self.llm_backbone.tokenizer, Qwen2TokenizerFast):
+            num_end_tokens = 2
 
         # Invoke super().generate --> taps into `GenerationMixin` which (redirects) to `forward()`
         autocast_dtype = self.llm_backbone.half_precision_dtype
@@ -171,7 +175,7 @@ class OpenVLA(PrismaticVLM):
 
                     while True:
                         generated_ids = self.raw_generate(build_prompt(prompt, init_input_ids), pixel_values)
-                        decoded_tokens = self.llm_backbone.tokenizer.decode(generated_ids[0, :-1])
+                        decoded_tokens = self.llm_backbone.tokenizer.decode(generated_ids[0, :-num_end_tokens])
 
                         prompt = decoded_tokens.split("\nOut: ")[-1]
                         prompt = prompt.split(" ASSISTANT: ")[-1]
@@ -204,7 +208,7 @@ class OpenVLA(PrismaticVLM):
                     self.time_frozen -= 1
                     generated_ids = self.raw_generate(build_prompt(self.frozen_prompt, init_input_ids), pixel_values)
 
-                    decoded_tokens = self.llm_backbone.tokenizer.decode(generated_ids[0, :-1])
+                    decoded_tokens = self.llm_backbone.tokenizer.decode(generated_ids[0, :-num_end_tokens])
                     prompt = decoded_tokens.split("\nOut: ")[-1]
                     prompt = prompt.split(" ASSISTANT: ")[-1]
 
@@ -214,7 +218,7 @@ class OpenVLA(PrismaticVLM):
                         prompt = prompt.split(" GRIPPER POSITION: ")[0]
                     self.frozen_prompt = prompt
 
-            generated_ids = generated_ids[:, :-1]  # remove the EOS token
+            generated_ids = generated_ids[:, :-num_end_tokens]  # remove the EOS token
             decoded_tokens = self.llm_backbone.tokenizer.decode(generated_ids[0])
 
             print("Reasoning:", decoded_tokens)
